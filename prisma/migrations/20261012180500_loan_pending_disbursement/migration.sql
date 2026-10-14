@@ -1,0 +1,8 @@
+-- AlterEnum
+ALTER TYPE "LoanStatus" ADD VALUE 'PENDING_DISBURSEMENT';
+
+-- AlterTable
+ALTER TABLE "Loan" ADD COLUMN "disbursedAt" TIMESTAMP(3);
+ALTER TABLE "Loan" ADD COLUMN "disbursementReference" TEXT;
+ALTER TABLE "Loan" ADD COLUMN "disbursementProofUrl" TEXT;
+ALTER TABLE "Loan" ALTER COLUMN "status" SET DEFAULT 'PENDING_DISBURSEMENT';

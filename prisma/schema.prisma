@@ -1,0 +1,656 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =========================
+// ENUMS
+// =========================
+
+enum UserRole {
+  CUSTOMER
+  AGENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LoanStatus {
+  PENDING_DISBURSEMENT
+  ACTIVE
+  COMPLETED
+  OVERDUE
+  DEFAULTED
+  CLOSED
+}
+
+enum EmiStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum PaymentMode {
+  ONLINE
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum DocumentType {
+  AADHAAR
+  PAN
+  PHOTO
+  ADDRESS_PROOF
+  INCOME_PROOF
+  BANK_STATEMENT
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AssignmentType {
+  PRIMARY
+  BACKUP
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  PAYMENT
+  COLLECTION
+  ASSIGN
+  UNASSIGN
+  VERIFY
+}
+
+enum SettlementStatus {
+  DRAFT
+  RECONCILED
+  DISCREPANCY
+  CANCELLED
+}
+
+enum SettlementItemStatus {
+  INCLUDED
+  RECONCILED
+  DISCREPANCY
+  EXCLUDED
+}
+
+// =========================
+// USER
+// =========================
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  phone        String?    @unique
+  password     String
+  role         UserRole   @default(CUSTOMER)
+  status       UserStatus @default(ACTIVE)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  customerProfile CustomerProfile?
+  agentProfile    AgentProfile?
+
+  auditLogs AuditLog[]
+
+  createdSettlements    CashSettlement[] @relation("SettlementCreatedBy")
+  reconciledSettlements CashSettlement[] @relation("SettlementReconciledBy")
+
+  @@index([role])
+  @@index([status])
+}
+
+// =========================
+// CUSTOMER
+// =========================
+
+model CustomerProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+
+  dateOfBirth     DateTime?
+  gender          String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+
+  occupation      String?
+  employerName    String?
+  monthlyIncome   Decimal? @db.Decimal(12, 2)
+
+  bankName        String?
+  accountNumber   String?
+  ifscCode        String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documents       KycDocument[]
+  applications   LoanApplication[]
+  loans           Loan[]
+  assignments     CustomerAgentAssignment[]
+
+  @@index([city])
+  @@index([state])
+}
+
+// =========================
+// AGENT
+// =========================
+
+model AgentProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+
+  employeeCode    String   @unique
+  joiningDate     DateTime?
+  address         String?
+  city            String?
+  state           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  areas           AgentArea[]
+  assignments     CustomerAgentAssignment[]
+  loanAssignments LoanAgentAssignment[]
+  collections     CashCollection[]
+  settlements     CashSettlement[]
+
+  @@index([employeeCode])
+}
+
+// =========================
+// AREAS
+// =========================
+
+model Area {
+  id          String   @id @default(uuid())
+  name        String
+  city        String?
+  state       String?
+  pincode     String?
+
+  createdAt   DateTime @default(now())
+
+  agents      AgentArea[]
+
+  @@unique([name, city, state])
+  @@index([pincode])
+}
+
+model AgentArea {
+  id          String   @id @default(uuid())
+  agentId     String
+  areaId      String
+
+  assignedAt  DateTime @default(now())
+
+  agent       AgentProfile @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  area        Area         @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, areaId])
+}
+
+// =========================
+// CUSTOMER ↔ AGENT ASSIGNMENT
+// =========================
+
+model CustomerAgentAssignment {
+  id          String         @id @default(uuid())
+  customerId  String
+  agentId     String
+
+  type        AssignmentType @default(PRIMARY)
+  active      Boolean        @default(true)
+
+  assignedAt  DateTime       @default(now())
+  unassignedAt DateTime?
+
+  customer    CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  agent       AgentProfile    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, active])
+  @@index([agentId, active])
+}
+
+// =========================
+// LOAN PRODUCTS
+// =========================
+
+model LoanProduct {
+  id              String   @id @default(uuid())
+
+  name            String   @unique
+  description     String?
+
+  minAmount       Decimal  @db.Decimal(12, 2)
+  maxAmount       Decimal? @db.Decimal(12, 2)
+
+  minInterestRate Decimal  @db.Decimal(5, 2)
+  maxInterestRate Decimal  @db.Decimal(5, 2)
+
+  minTenureMonths Int
+  maxTenureMonths Int
+
+  active          Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  applications    LoanApplication[]
+}
+
+// =========================
+// LOAN APPLICATION
+// =========================
+
+model LoanApplication {
+  id              String            @id @default(uuid())
+
+  customerId      String
+  productId       String
+
+  requestedAmount Decimal           @db.Decimal(12, 2)
+  requestedTenure Int
+  interestRate    Decimal?          @db.Decimal(5, 2)
+
+  status          ApplicationStatus @default(DRAFT)
+
+  purpose         String?
+
+  rejectionReason String?
+  reviewNotes     String?
+
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  customer        CustomerProfile @relation(fields: [customerId], references: [id])
+  product         LoanProduct     @relation(fields: [productId], references: [id])
+
+  documents       ApplicationDocument[]
+  loan            Loan?
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([status])
+}
+
+// =========================
+// APPLICATION DOCUMENTS
+// =========================
+
+model ApplicationDocument {
+  id              String   @id @default(uuid())
+
+  applicationId   String
+  documentId      String
+
+  createdAt       DateTime @default(now())
+
+  application     LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  document        KycDocument     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, documentId])
+}
+
+// =========================
+// KYC DOCUMENTS
+// =========================
+
+model KycDocument {
+  id              String         @id @default(uuid())
+
+  customerId      String
+  type            DocumentType
+
+  documentNumber  String?
+  fileUrl         String
+
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+
+  verifiedAt      DateTime?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  customer        CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  applications    ApplicationDocument[]
+
+  @@index([customerId])
+  @@index([type])
+  @@index([status])
+}
+
+// =========================
+// LOAN
+// =========================
+
+model Loan {
+  id              String     @id @default(uuid())
+
+  customerId      String
+  applicationId   String     @unique
+
+  loanNumber      String     @unique
+
+  principalAmount Decimal    @db.Decimal(12, 2)
+  interestRate    Decimal    @db.Decimal(5, 2)
+  tenureMonths    Int
+
+  emiAmount       Decimal    @db.Decimal(12, 2)
+  totalInterest   Decimal    @db.Decimal(12, 2)
+  totalPayable    Decimal    @db.Decimal(12, 2)
+
+  outstandingAmount Decimal  @db.Decimal(12, 2)
+
+  startDate       DateTime?
+  endDate         DateTime?
+
+  disbursedAt     DateTime?
+  disbursementReference String?
+  disbursementProofUrl  String?
+
+  status          LoanStatus @default(PENDING_DISBURSEMENT)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  customer        CustomerProfile @relation(fields: [customerId], references: [id])
+  application     LoanApplication  @relation(fields: [applicationId], references: [id])
+
+  emis            EmiSchedule[]
+  payments        Payment[]
+  agentAssignments LoanAgentAssignment[]
+
+  @@index([customerId])
+  @@index([loanNumber])
+  @@index([status])
+}
+
+// =========================
+// LOAN ↔ AGENT ASSIGNMENT
+// =========================
+
+model LoanAgentAssignment {
+  id          String         @id @default(uuid())
+
+  loanId      String
+  agentId     String
+
+  type        AssignmentType @default(PRIMARY)
+  active      Boolean        @default(true)
+
+  assignedAt  DateTime       @default(now())
+  unassignedAt DateTime?
+
+  loan        Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  agent       AgentProfile @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([loanId, active])
+  @@index([agentId, active])
+}
+
+// =========================
+// EMI SCHEDULE
+// =========================
+
+model EmiSchedule {
+  id              String    @id @default(uuid())
+
+  loanId          String
+
+  installmentNo   Int
+  dueDate         DateTime
+
+  principalAmount Decimal   @db.Decimal(12, 2)
+  interestAmount  Decimal   @db.Decimal(12, 2)
+  emiAmount       Decimal   @db.Decimal(12, 2)
+
+  paidAmount      Decimal   @default(0) @db.Decimal(12, 2)
+  outstandingAmount Decimal @db.Decimal(12, 2)
+
+  status          EmiStatus @default(PENDING)
+
+  paidAt          DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  loan            Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  payments        Payment[]
+
+  @@unique([loanId, installmentNo])
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+// =========================
+// PAYMENTS
+// =========================
+
+model Payment {
+  id              String        @id @default(uuid())
+
+  loanId          String
+  emiId           String
+
+  amount          Decimal       @db.Decimal(12, 2)
+  mode            PaymentMode
+
+  status          PaymentStatus @default(PENDING)
+
+  transactionId   String?       @unique
+  receiptNumber   String?       @unique
+
+  paidAt          DateTime?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  loan            Loan          @relation(fields: [loanId], references: [id])
+  emi             EmiSchedule   @relation(fields: [emiId], references: [id])
+
+  onlinePayment   OnlinePayment?
+  cashCollection  CashCollection?
+
+  @@index([loanId])
+  @@index([emiId])
+  @@index([mode])
+  @@index([status])
+}
+
+// =========================
+// CASHFREE ONLINE PAYMENT
+// =========================
+
+model OnlinePayment {
+  id              String   @id @default(uuid())
+
+  paymentId       String   @unique
+
+  cashfreeOrderId String   @unique
+  cashfreePaymentId String?
+
+  paymentSessionId String?
+
+  gatewayResponse Json?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payment         Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([cashfreeOrderId])
+}
+
+// =========================
+// CASH COLLECTION
+// =========================
+
+model CashCollection {
+  id              String   @id @default(uuid())
+
+  paymentId       String   @unique
+  agentId         String
+
+  receiptNumber   String   @unique
+
+  collectedAmount Decimal  @db.Decimal(12, 2)
+
+  collectedAt     DateTime @default(now())
+
+  notes           String?
+
+  reconciled      Boolean  @default(false)
+  reconciledAt    DateTime?
+
+  agent           AgentProfile @relation(fields: [agentId], references: [id])
+  payment         Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  settlementItems CashSettlementItem[]
+
+  @@index([agentId])
+  @@index([collectedAt])
+  @@index([reconciled])
+}
+
+// =========================
+// AUDIT LOG
+// =========================
+
+model AuditLog {
+  id          String      @id @default(uuid())
+
+  userId      String?
+
+  action      AuditAction
+  entity      String
+  entityId    String?
+
+  description String?
+  metadata    Json?
+
+  ipAddress   String?
+
+  createdAt   DateTime    @default(now())
+
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// =========================
+// CASH SETTLEMENT
+// =========================
+
+model CashSettlement {
+  id                    String            @id @default(uuid())
+  settlementReference   String            @unique
+  businessDate          DateTime
+  agentId               String?
+
+  expectedAmount        Decimal           @db.Decimal(12, 2)
+  actualAmount          Decimal?          @db.Decimal(12, 2)
+  discrepancyAmount     Decimal?          @db.Decimal(12, 2)
+
+  status                SettlementStatus  @default(DRAFT)
+  notes                 String?
+  discrepancyReason     String?
+
+  createdById           String
+  reconciledById        String?
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  countedAt             DateTime?
+  reconciledAt          DateTime?
+
+  createdBy             User              @relation("SettlementCreatedBy", fields: [createdById], references: [id])
+  reconciledBy          User?             @relation("SettlementReconciledBy", fields: [reconciledById], references: [id])
+  agent                 AgentProfile?     @relation(fields: [agentId], references: [id])
+
+  items                 CashSettlementItem[]
+
+  @@index([businessDate])
+  @@index([agentId])
+  @@index([status])
+  @@index([createdById])
+}
+
+// =========================
+// CASH SETTLEMENT ITEM
+// =========================
+
+model CashSettlementItem {
+  id                    String                @id @default(uuid())
+  settlementId          String
+  cashCollectionId      String
+
+  recordedAmount        Decimal               @db.Decimal(12, 2)
+  status                SettlementItemStatus  @default(INCLUDED)
+  discrepancyReason     String?
+
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  settlement            CashSettlement        @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  cashCollection        CashCollection        @relation(fields: [cashCollectionId], references: [id], onDelete: Restrict)
+
+  @@unique([settlementId, cashCollectionId])
+  @@index([settlementId])
+  @@index([cashCollectionId])
+  @@index([status])
+}

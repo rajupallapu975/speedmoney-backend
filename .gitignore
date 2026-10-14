@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / AI assistant directories
+.agents/
+.claude/
+.cursor/
+.devin/
+.vscode/
+.idea/
+
+# Scratch files
+scratch*.js
+test-*.log
+
+# OS files
+.DS_Store
+Thumbs.db
