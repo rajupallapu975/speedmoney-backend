@@ -146,7 +146,7 @@ const handleRoot = (req, res) => {
       </head>
       <body>
         <div class="card">
-          <div class="badge">● API Online · Port 5000</div>
+          <div class="badge">● API Online · Port ${process.env.PORT || 8860}</div>
           <h1>SpeedMoney+ Backend API</h1>
           <p>This is the backend REST API server. To view the user interface and test Firebase authentication, open the frontend portals below:</p>
           <div class="grid">
@@ -375,7 +375,7 @@ app.use((err, req, res, next) => {
 // START SERVER
 // ========================================
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8860;
 
 if (require.main === module) {
   const server = app.listen(PORT, "0.0.0.0", () => {

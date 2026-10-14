@@ -20,13 +20,13 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=8860
 
 # Install OpenSSL for Prisma engine on Alpine
 RUN apk add --no-cache openssl ca-certificates
 
 COPY --from=builder /app ./
 
-EXPOSE 5000
+EXPOSE 8860
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]

@@ -21,7 +21,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: speedmoney-backend
     restart: always
@@ -29,9 +29,9 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "5000:5000"
+      - "8860:8860"
     environment:
-      PORT: 5000
+      PORT: 8860
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-speedmoney}:${POSTGRES_PASSWORD:-SpeedMoney2026Secure!}@db:5432/${POSTGRES_DB:-loan_platform}?schema=public
       JWT_SECRET: ${JWT_SECRET:-speedmoney_jwt_secret_key_prod_2026}
@@ -39,7 +39,7 @@ services:
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
     env_file:
-      - ./backend/.env
+      - .env
 
 volumes:
   pgdata:

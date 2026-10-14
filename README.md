@@ -58,7 +58,7 @@ cp .env.example .env
 ```
 Update your `.env`:
 ```ini
-PORT=5000
+PORT=8860
 DATABASE_URL="postgresql://speedmoney:password@localhost:5432/loan_platform?schema=public"
 JWT_SECRET="your-secure-jwt-secret"
 RAZORPAY_KEY_ID="rzp_live_your_key_id"
@@ -76,7 +76,7 @@ npx prisma migrate deploy
 ```bash
 npm start
 ```
-The API will run on `http://localhost:5000/api`.
+The API will run on `http://localhost:8860/api`.
 
 ---
 

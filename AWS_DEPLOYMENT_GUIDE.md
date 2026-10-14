@@ -14,7 +14,7 @@ This guide provides end-to-end instructions for deploying the SpeedMoney backend
                            [Nginx Reverse Proxy + SSL (Port 443)]
                                         |
                                         v
-                           [Node.js Express API (Port 5000, PM2 / Docker)]
+                           [Node.js Express API (Port 8860, PM2 / Docker)]
                                         |
                                         v
                            [PostgreSQL 16 Database (Local on EC2 or AWS RDS)]
@@ -82,7 +82,7 @@ nano .env
 
 Configure your production values:
 ```ini
-PORT=5000
+PORT=8860
 NODE_ENV=production
 
 # Database URL pointing to local PostgreSQL
@@ -125,7 +125,7 @@ pm2 startup
 Verify the backend is running:
 ```bash
 pm2 status
-curl http://localhost:5000/api/payments/razorpay/config
+curl http://localhost:8860/api/payments/razorpay/config
 ```
 
 ---
