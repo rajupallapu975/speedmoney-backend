@@ -107,7 +107,7 @@ router.get("/razorpay/config", (req, res) => {
 router.post(
     "/razorpay/create-order",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const { loanId, emiId, amount } = req.body;
@@ -409,7 +409,7 @@ router.post(
 router.post(
     "/razorpay/verify",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const {
@@ -718,7 +718,7 @@ router.post(
 router.post(
     "/razorpay/check-order-status",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const { orderId, paymentLinkId, loanId, emiId } = req.body;
@@ -932,7 +932,7 @@ router.post(
 router.get(
     "/my",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const customer = await getResolvedCustomerProfile(req.user);
@@ -1008,7 +1008,7 @@ router.get(
 router.post(
     "/online",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const {

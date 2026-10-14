@@ -29,7 +29,7 @@ function formatEmi(emi) {
 router.get(
     "/",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const customer = await getResolvedCustomerProfile(req.user);
@@ -115,7 +115,7 @@ router.get(
 router.get(
     "/:loanId",
     authenticateToken,
-    authorizeRoles("CUSTOMER"),
+    authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
     async (req, res) => {
         try {
             const customer = await getResolvedCustomerProfile(req.user);

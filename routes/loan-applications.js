@@ -14,7 +14,7 @@ const router = express.Router();
 router.post(
   "/",
   authenticateToken,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
   async (req, res) => {
     try {
       const {
@@ -222,7 +222,7 @@ router.post(
 router.get(
   "/my",
   authenticateToken,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("CUSTOMER", "AGENT", "ADMIN"),
   async (req, res) => {
     try {
       const customer = await prisma.customerProfile.findUnique({
