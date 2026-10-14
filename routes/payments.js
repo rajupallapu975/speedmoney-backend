@@ -961,6 +961,13 @@ router.get(
                             status: true,
                         },
                     },
+                    loan: {
+                        select: {
+                            id: true,
+                            loanNumber: true,
+                            status: true,
+                        },
+                    },
                     onlinePayment: true,
                     cashCollection: {
                         include: {
